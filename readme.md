@@ -16,8 +16,20 @@ pip install ipython
 ## Use homography to calculate the distance to the camera
 
 - [x] Camera Projection
-- [ ] Distance Calculation
+- [x] Distance Calculation
+- [ ] Noise in homography estimation
 
 ```bash
 python test_homography_dist.py
 ```
+
+### Some sample results
+
+* The base of the camera pole is at the center of the image.
+![deg0](example_0.png)
+
+* The base of the camera pole is near the edge of the image.
+![deg20](example_20.png)
+
+* The base of the camera pole is outside of the image frame.
+![deg60](example_60.png)

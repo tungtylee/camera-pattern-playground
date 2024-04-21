@@ -1,6 +1,18 @@
 import numpy as np
 
 
+def genCircle(n_points, radius, center):
+    # Generate points
+    angles = np.linspace(
+        0, 2 * np.pi, n_points, endpoint=False
+    )  # Create angles evenly spaced around the circle
+    # X coordinates
+    x = radius * np.cos(angles) + center[0]
+    # Y coordinates
+    y = radius * np.sin(angles) + center[1]
+    return x, y
+
+
 def rotate_along_x(R, theta):
     theta = np.radians(theta)
 
@@ -63,5 +75,9 @@ def proj(K, R, T, X3d, Y3d, Z3d):
     # Convert from homogeneous coordinates to 2D coordinates
     x2d = image_points_homogeneous[:, 0] / image_points_homogeneous[:, 2]
     y2d = image_points_homogeneous[:, 1] / image_points_homogeneous[:, 2]
+
+    fornan = image_points_homogeneous[:, 2] < 0
+    x2d[fornan] = np.nan
+    y2d[fornan] = np.nan
 
     return x2d, y2d
