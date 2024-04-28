@@ -6,6 +6,47 @@ import numpy as np
 from utils_cam import genCircle, proj, rotate_along_x, rotate_along_y, rotate_along_z
 
 
+def gen_camorigin_proj(homography_matrix, K=None, R=None, T=None):
+    # generate camorigin projected point
+    # Input:
+    #   homography_matrix with shape (3, 3)
+    #     cam_coordinates = np.matmul(homography_matrix, groundplane_coordinates)
+    #   K, R, T: camera projection matrix from world coordinates to image coordinates
+    #     image_coordinates = np.matmul(K, np.matmul(R, world_coordinages) + T)
+    # Output:
+    #   camorigin_proj_in_ground: camera origin projected on ground plane (Z=0),
+    #     we call (camorigin_proj_in_ground[0], camorigin_proj_in_ground[1], 0) with
+    #     cambaseloc
+    #   cambaseloc_proj_in_camcoordinates: cambaseloc projected on the camera coordinates
+    #     (using homography)(without K1)
+    #   cambaseloc_proj_in_image: cambaseloc projected on the image coordinates
+    #     (using K, R, T)
+    scale = 1 / np.linalg.norm(homography_matrix[:, 0])
+    t = homography_matrix[:, 2] * scale
+    r1 = homography_matrix[:, 0] * scale
+    r2 = homography_matrix[:, 1] * scale
+
+    camorigin_proj_in_ground = [np.dot(r1, -t), np.dot(r2, -t)]
+    camorigin_proj_in_ground_3d = np.array(camorigin_proj_in_ground + [1])
+    cambaseloc_proj_in_camcoordinates = np.matmul(
+        homography_matrix, camorigin_proj_in_ground_3d
+    )
+    cambaseloc_proj_in_camcoordinates = (
+        cambaseloc_proj_in_camcoordinates / cambaseloc_proj_in_camcoordinates[2]
+    )
+    if all(x is not None for x in [K, R, T]):
+        cambaseloc_proj_in_image = proj(
+            K, R, T, camorigin_proj_in_ground[0], camorigin_proj_in_ground[1], 0
+        )
+    else:
+        cambaseloc_proj_in_image = None
+    return (
+        camorigin_proj_in_ground,
+        cambaseloc_proj_in_camcoordinates,
+        cambaseloc_proj_in_image,
+    )
+
+
 def example(theta_to_look_upward=60):
     # focal length: pixel (500)
     # real world: cm
@@ -112,21 +153,26 @@ def example(theta_to_look_upward=60):
     # print("Status (Inlier = 1, Outlier = 0):")
     # print(status)
 
-    scale = 1 / np.linalg.norm(homography_matrix[:, 0])
-    t = homography_matrix[:, 2] * scale
-    r1 = homography_matrix[:, 0] * scale
-    r2 = homography_matrix[:, 1] * scale
+    (
+        camorigin_proj_in_ground,
+        cambaseloc_proj_in_camcoordinates,
+        cambaseloc_proj_in_image,
+    ) = gen_camorigin_proj(homography_matrix, K, R, T)
 
-    origin_in_3d = [np.dot(r1, -t), np.dot(r2, -t)]
-    print(origin_in_3d)
+    cambaseloc_proj_in_camx, cambaseloc_proj_in_camy = (
+        cambaseloc_proj_in_image[0],
+        cambaseloc_proj_in_image[1],
+    )
 
-    x2cam, y2cam = proj(K, R, T, origin_in_3d[0], origin_in_3d[1], 0)
-    ax.plot(x2cam, y2cam, "yx", markersize=12)
+    print(camorigin_proj_in_ground)
+    print("cambaseloc_proj_in_camcoordinates", cambaseloc_proj_in_camcoordinates)
+    print("cambaseloc_proj_in_image", cambaseloc_proj_in_image)
+    ax.plot(cambaseloc_proj_in_camx, cambaseloc_proj_in_camy, "yx", markersize=12)
 
     # Annotate the point
     ax.annotate(
         "Camera",
-        (x2cam, y2cam),
+        (cambaseloc_proj_in_camx, cambaseloc_proj_in_camy),
         textcoords="offset points",
         xytext=(0, 10),
         ha="center",
@@ -144,7 +190,9 @@ def example(theta_to_look_upward=60):
 
     # 100 cm
     for dis in [100, 200, 400, 800]:
-        X3dcircle, Y3dcircle = genCircle(n_points=1000, radius=dis, center=origin_in_3d)
+        X3dcircle, Y3dcircle = genCircle(
+            n_points=1000, radius=dis, center=camorigin_proj_in_ground
+        )
         Z3dcircle = np.zeros(X3dcircle.shape)
         x2arr, y2arr = proj(K, R, T, X3dcircle, Y3dcircle, Z3dcircle)
         vertices = np.column_stack((x2arr, y2arr))

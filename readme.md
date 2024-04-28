@@ -16,6 +16,7 @@ pip install ipython
 ## Use homography to calculate the distance to the camera
 
 - [x] Camera Projection
+- [x] gen_camorigin_proj implementation
 - [x] Distance Calculation
 - [ ] Noise in homography estimation
 
